@@ -1,7 +1,6 @@
 name: Process Uploaded Sheet
 
-# This tells the workflow to run when it receives a special API call
-# with the event type 'process-sheet-upload'.
+# This trigger allows your Apps Script to start the workflow
 on:
   repository_dispatch:
     types: [process-sheet-upload]
@@ -10,17 +9,18 @@ jobs:
   run-python-script:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checks out your repository code
-      - name: Check out repository code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Step 2: Sets up the Python environment
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-      # Step 3: Installs dependencies one-by-one for maximum compatibility
+      # This installs all necessary libraries with compatible versions
       - name: Install dependencies
         run: |
           pip install numpy==1.26.4
@@ -29,18 +29,17 @@ jobs:
           pip install gspread-dataframe==3.3.1
           pip install google-auth==2.29.0
           pip install Flask==3.0.3
-          
-      # Step 4: Authenticates to Google Cloud using the secret you created
+
+      # This is the crucial step to log in to Google
       - name: Authenticate with Google Cloud
         uses: 'google-github-actions/auth@v1'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # Step 5: Runs your main.py script
+      # This runs your script and injects the data from Apps Script
       - name: Run Python Sheet Processor
         run: python main.py
         env:
-          # This passes the data sent from Apps Script into your Python script
           TEMP_SHEET_ID: ${{ github.event.client_payload.tempSheetId }}
           MAIN_SHEET_ID: ${{ github.event.client_payload.mainSheetId }}
           SELECTED_REGIONS: ${{ join(github.event.client_payload.regions, ',') }}
