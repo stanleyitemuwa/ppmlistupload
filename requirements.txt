@@ -1,0 +1,5 @@
+Flask==2.2.2
+gspread==5.7.2
+pandas==1.5.3
+gspread-dataframe==3.3.1
+google-auth==2.16.0
