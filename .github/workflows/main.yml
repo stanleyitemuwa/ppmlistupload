@@ -22,7 +22,7 @@ jobs:
 
       # Step 3: Installs the libraries from your requirements.txt file
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install --no-cache-dir --force-reinstall -r requirements.txt
 
       # Step 4: Authenticates to Google Cloud using the secret you created
       - name: Authenticate with Google Cloud
