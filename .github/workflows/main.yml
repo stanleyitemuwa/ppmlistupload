@@ -58,4 +58,4 @@ jobs:
         env:
           TEMP_SHEET_ID: ${{ github.event.client_payload.tempSheetId || github.event.inputs.tempSheetId }}
           MAIN_SHEET_ID: ${{ github.event.client_payload.mainSheetId || github.event.inputs.mainSheetId }}
-          SELECTED_REGIONS: ${{ github.event.client_payload.regions || github.event.inputs.selectedRegions }}
+          SELECTED_REGIONS: ${{ github.event.client_payload.selectedRegions != '' && github.event.client_payload.selectedRegions || github.event.inputs.selectedRegions }}
