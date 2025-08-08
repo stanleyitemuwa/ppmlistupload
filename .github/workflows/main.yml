@@ -1,0 +1,40 @@
+name: Process Uploaded Sheet
+
+# This tells the workflow to run when it receives a special API call
+# with the event type 'process-sheet-upload'.
+on:
+  repository_dispatch:
+    types: [process-sheet-upload]
+
+jobs:
+  run-python-script:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checks out your repository code
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      # Step 2: Sets up the Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Step 3: Installs the libraries from your requirements.txt file
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Step 4: Authenticates to Google Cloud using the secret you created
+      - name: Authenticate with Google Cloud
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      # Step 5: Runs your main.py script
+      - name: Run Python Sheet Processor
+        run: python main.py
+        env:
+          # This passes the data sent from Apps Script into your Python script
+          TEMP_SHEET_ID: ${{ github.event.client_payload.tempSheetId }}
+          MAIN_SHEET_ID: ${{ github.event.client_payload.mainSheetId }}
+          SELECTED_REGIONS: ${{ join(github.event.client_payload.regions, ',') }}
