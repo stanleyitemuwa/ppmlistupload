@@ -20,10 +20,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Step 3: Installs the libraries from your requirements.txt file
+      # Step 3: Installs dependencies one-by-one for maximum compatibility
       - name: Install dependencies
-        run: pip install --no-cache-dir --force-reinstall -r requirements.txt
-
+        run: |
+          pip install numpy==1.26.4
+          pip install pandas==2.2.2
+          pip install gspread==5.12.4
+          pip install gspread-dataframe==3.3.1
+          pip install google-auth==2.29.0
+          pip install Flask==3.0.3
+          
       # Step 4: Authenticates to Google Cloud using the secret you created
       - name: Authenticate with Google Cloud
         uses: 'google-github-actions/auth@v1'
