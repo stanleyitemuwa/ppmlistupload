@@ -4,10 +4,12 @@ from gspread_dataframe import set_with_dataframe
 import os
 
 # --- Authentication Configuration ---
-# This script uses the authentication provided by the GitHub workflow.
-# It does NOT read the key file directly.
+# This version explicitly uses the credential file path provided by the GitHub workflow.
 try:
-    gc = gspread.service_account() # The google-github-actions step handles auth
+    # Get the credentials file path from the environment variable set by the workflow
+    creds_path = os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+    # Explicitly tell gspread to use that file
+    gc = gspread.service_account(filename=creds_path)
     print("Authentication to Google Sheets successful.")
 except Exception as e:
     print(f"Error authenticating with Google: {e}")
