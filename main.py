@@ -28,7 +28,7 @@ REGION_TO_SHEET_MAP = {
     "AHOADA": "Bayelsa", "ALPHA 1": "Alpha", "ALPHA 2": "Alpha",
     "BAYELSA": "Bayelsa", "BETA 1": "Beta", "BETA 2": "Beta",
     "CALABAR REGION": "Calabar", "EKET REGION": "Akwa_Ibom", "GAMMA 1": "Gamma",
-    "GAMMA 2": "Gamma", "OGOJA SUB REGION": "Calabar",
+    "GAMMA 2": "Gamma", "OGOJA SUB-REGION": "Calabar",
     "UYO REGION": "Akwa_Ibom"
 }
 
@@ -133,4 +133,5 @@ def process_sheets_in_batches():
 
 if __name__ == "__main__":
     process_sheets_in_batches()
+
 
