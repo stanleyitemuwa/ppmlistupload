@@ -16,7 +16,7 @@ except Exception as e:
     print(f"Error authenticating with Google: {e}")
     sys.exit(1) # Exit if authentication fails
 
-# --- NEW: Define the exact headers for columns A to M ---
+# --- Target Headers (Columns A to M) ---
 TARGET_HEADERS = [
     'REGIONS', 'FEEDER33NAME', 'FEEDER11NAME', 'DTR_NAME', 'DTRID', 
     'CON_MAXDEMAND', 'CONS_TYPE', 'GOVT_OR_PRIVATE', 'ACCOUNTNO', 
@@ -69,30 +69,55 @@ def process_sheets_in_batches():
             try:
                 sheet = dest_ss.worksheet(sheet_name)
                 
-                rows_to_delete = []
-                for region in regions_in_batch:
-                    if region in ref_df.index:
-                        ref_info = ref_df.loc[region]
-                        start_idx = int(ref_info.get('TARGET FIRST INDEX', 0))
-                        end_idx = int(ref_info.get('TARGET LAST INDEX', 0))
-                        if start_idx > 0 and end_idx >= start_idx:
-                            rows_to_delete.append({'start': start_idx, 'end': end_idx})
-                
-                for r in sorted(rows_to_delete, key=lambda x: x['start'], reverse=True):
-                    print(f"Deleting rows {r['start']} to {r['end']} in sheet '{sheet_name}'")
-                    sheet.delete_rows(r['start'], r['end'])
+                # --- MODIFIED LOGIC: Check for the special 'append-only' flag ---
+                # We check the first region in the batch to determine the mode.
+                first_region_in_batch = regions_in_batch[0]
+                append_only_mode = False
+                if first_region_in_batch in ref_df.index:
+                    end_idx_flag = int(ref_df.loc[first_region_in_batch].get('TARGET LAST INDEX', 0))
+                    if end_idx_flag == 2:
+                        append_only_mode = True
+
+                # --- MODIFIED LOGIC: Conditional Deletion ---
+                if append_only_mode:
+                    print("Append-only mode detected (Last Index is 2). Skipping row deletion.")
+                else:
+                    # Original deletion logic runs only if not in append-only mode
+                    rows_to_delete = []
+                    for region in regions_in_batch:
+                        if region in ref_df.index:
+                            ref_info = ref_df.loc[region]
+                            start_idx = int(ref_info.get('TARGET FIRST INDEX', 0))
+                            end_idx = int(ref_info.get('TARGET LAST INDEX', 0))
+                            if start_idx > 0 and end_idx >= start_idx:
+                                rows_to_delete.append({'start': start_idx, 'end': end_idx})
+                    
+                    for r in sorted(rows_to_delete, key=lambda x: x['start'], reverse=True):
+                        print(f"Deleting rows {r['start']} to {r['end']} in sheet '{sheet_name}'")
+                        sheet.delete_rows(r['start'], r['end'])
 
                 new_rows_df = uploaded_df[uploaded_df['REGIONS'].str.upper().isin(regions_in_batch)]
 
                 if not new_rows_df.empty:
                     print(f"Found {len(new_rows_df)} new rows to add.")
-                    
-                    # --- MODIFIED: Filter DataFrame to only include target columns ---
-                    # This ensures we only write data to columns A through M.
                     df_to_write = new_rows_df.reindex(columns=TARGET_HEADERS)
                     
-                    last_row = len(sheet.get_all_values())
-                    set_with_dataframe(sheet, df_to_write, row=last_row + 1, include_index=False, include_column_header=False)
+                    # --- MODIFIED LOGIC: Determine where to append the data ---
+                    append_row_start = 0
+                    if append_only_mode:
+                        print("Finding last row with content in Column A...")
+                        col_a_values = sheet.col_values(1)
+                        # Find the index of the last non-empty cell in column A
+                        last_content_row = len(col_a_values)
+                        while last_content_row > 0 and not col_a_values[last_content_row - 1]:
+                            last_content_row -= 1
+                        append_row_start = last_content_row + 1
+                    else:
+                        # Default behavior: append after all existing content in the sheet
+                        append_row_start = len(sheet.get_all_values()) + 1
+                    
+                    print(f"Appending new data starting at row {append_row_start}.")
+                    set_with_dataframe(sheet, df_to_write, row=append_row_start, include_index=False, include_column_header=False)
                     print(f"Successfully processed batch for sheet '{sheet_name}'.")
 
             except Exception as batch_error:
