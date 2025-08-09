@@ -1,7 +1,6 @@
 name: Process Uploaded Sheet
 
 on:
-  # This trigger allows you to run the workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       tempSheetId:
@@ -10,30 +9,18 @@ on:
       mainSheetId:
         description: 'ID of the main customer list Sheet'
         required: true
-      # IMPORTANT: This now expects a JSON array string
       selectedRegions:
         description: 'JSON array of regions (e.g., ["ALPHA 1", "BETA 2"])'
         required: true
         
-  # This trigger allows your Apps Script to start the workflow via an API call
   repository_dispatch:
     types: [process-sheet-upload]
 
 jobs:
-  # This job now uses a matrix strategy to run once per region, sequentially.
-  process-region:
+  # This is now a single job that runs the Python script once.
+  run-python-script:
     runs-on: windows-latest
     
-    strategy:
-      # This ensures jobs run one by one, not in parallel
-      max-parallel: 1
-      # This stops all future jobs if one fails
-      fail-fast: true
-      matrix:
-        # 'fromJSON' reads the list from either trigger type.
-        # 'region' becomes a variable for the current job (e.g., "BETA 2").
-        region: ${{ github.event.client_payload.regions || fromJSON(github.event.inputs.selectedRegions) }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,19 +35,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy==1.26.4 pandas==2.2.2 gspread==5.12.4 gspread-dataframe==3.3.1 google-auth==2.29.0
 
-      # The google-github-actions/auth action exports the GOOGLE_APPLICATION_CREDENTIALS
-      # environment variable, which the Python script uses automatically.
       - name: Authenticate with Google Cloud
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # The name of this step is now dynamic, e.g., "Run for region BETA 2"
-      - name: Run Python Sheet Processor for ${{ matrix.region }}
+      - name: Run Python Sheet Processor
         run: python main.py
         env:
-          # Pass the single region for this job run
-          SELECTED_REGION: ${{ matrix.region }}
-          # Pass the sheet IDs from the original trigger
+          # This passes the full list of regions as a JSON string.
+          SELECTED_REGIONS_JSON: ${{ toJSON(github.event.client_payload.regions || fromJSON(github.event.inputs.selectedRegions)) }}
           TEMP_SHEET_ID: ${{ github.event.client_payload.tempSheetId || github.event.inputs.tempSheetId }}
           MAIN_SHEET_ID: ${{ github.event.client_payload.mainSheetId || github.event.inputs.mainSheetId }}
