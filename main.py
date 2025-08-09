@@ -69,8 +69,6 @@ def process_sheets_in_batches():
             try:
                 sheet = dest_ss.worksheet(sheet_name)
                 
-                # --- MODIFIED LOGIC: Check for the special 'append-only' flag ---
-                # We check the first region in the batch to determine the mode.
                 first_region_in_batch = regions_in_batch[0]
                 append_only_mode = False
                 if first_region_in_batch in ref_df.index:
@@ -78,11 +76,9 @@ def process_sheets_in_batches():
                     if end_idx_flag == 2:
                         append_only_mode = True
 
-                # --- MODIFIED LOGIC: Conditional Deletion ---
                 if append_only_mode:
                     print("Append-only mode detected (Last Index is 2). Skipping row deletion.")
                 else:
-                    # Original deletion logic runs only if not in append-only mode
                     rows_to_delete = []
                     for region in regions_in_batch:
                         if region in ref_df.index:
@@ -102,18 +98,19 @@ def process_sheets_in_batches():
                     print(f"Found {len(new_rows_df)} new rows to add.")
                     df_to_write = new_rows_df.reindex(columns=TARGET_HEADERS)
                     
-                    # --- MODIFIED LOGIC: Determine where to append the data ---
+                    # --- NEW: Sort the data by REGIONS before appending ---
+                    print("Sorting data by REGIONS...")
+                    df_to_write = df_to_write.sort_values(by='REGIONS')
+                    
                     append_row_start = 0
                     if append_only_mode:
                         print("Finding last row with content in Column A...")
                         col_a_values = sheet.col_values(1)
-                        # Find the index of the last non-empty cell in column A
                         last_content_row = len(col_a_values)
                         while last_content_row > 0 and not col_a_values[last_content_row - 1]:
                             last_content_row -= 1
                         append_row_start = last_content_row + 1
                     else:
-                        # Default behavior: append after all existing content in the sheet
                         append_row_start = len(sheet.get_all_values()) + 1
                     
                     print(f"Appending new data starting at row {append_row_start}.")
