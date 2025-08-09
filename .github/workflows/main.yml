@@ -32,7 +32,7 @@ jobs:
       matrix:
         # 'fromJSON' reads the list from either trigger type.
         # 'region' becomes a variable for the current job (e.g., "BETA 2").
-        region: ${{ fromJSON(github.event.client_payload.regions || github.event.inputs.selectedRegions) }}
+        region: ${{ github.event.client_payload.regions || fromJSON(github.event.inputs.selectedRegions) }}
 
     steps:
       - name: Checkout repository
