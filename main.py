@@ -44,7 +44,32 @@ def process_sheets_in_batches():
 
         temp_ss = gc.open_by_key(temp_sheet_id)
         temp_sheet = temp_ss.get_worksheet(0)
-        uploaded_df = pd.DataFrame(temp_sheet.get_all_records())
+        
+        # --- NEW LOGIC: Dynamic Header Search (Rows 1-3) ---
+        print("Fetching all data from temp sheet to find valid headers...")
+        all_values = temp_sheet.get_all_values()
+        uploaded_df = None
+        
+        # Search first 3 rows for a unique header
+        for i in range(min(3, len(all_values))):
+            potential_header = all_values[i]
+            # Strip whitespace to ensure clean comparison
+            cleaned_header = [str(h).strip() for h in potential_header]
+            
+            # Check for uniqueness: Are the number of items equal to the number of unique items?
+            # We also ensure there is at least one non-empty column header to avoid empty rows
+            if len(cleaned_header) == len(set(cleaned_header)) and any(cleaned_header):
+                print(f"Found unique header on row {i+1}. Processing data...")
+                # Create DataFrame using this row as columns, and the rest as data
+                uploaded_df = pd.DataFrame(all_values[i+1:], columns=cleaned_header)
+                break
+            else:
+                print(f"Row {i+1} headers are not unique or empty. Searching next row...")
+
+        if uploaded_df is None:
+            raise ValueError("Critical Error: Could not find a unique header row in the first 3 rows of the worksheet.")
+        # ----------------------------------------------------
+
         uploaded_df.columns = [str(col).strip().upper() for col in uploaded_df.columns]
         
         dest_ss = gc.open_by_key(main_sheet_id)
@@ -133,6 +158,3 @@ def process_sheets_in_batches():
 
 if __name__ == "__main__":
     process_sheets_in_batches()
-
-
-
