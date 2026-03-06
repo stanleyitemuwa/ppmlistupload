@@ -45,7 +45,7 @@ def process_sheets_in_batches():
         temp_ss = gc.open_by_key(temp_sheet_id)
         temp_sheet = temp_ss.get_worksheet(0)
         
-        # --- NEW LOGIC: Dynamic Header Search (Rows 1-3) ---
+        # --- Dynamic Header Search (Rows 1-3) ---
         print("Fetching all data from temp sheet to find valid headers...")
         all_values = temp_sheet.get_all_values()
         uploaded_df = None
@@ -56,9 +56,9 @@ def process_sheets_in_batches():
             # Strip whitespace to ensure clean comparison
             cleaned_header = [str(h).strip() for h in potential_header]
             
-            # Check for uniqueness: Are the number of items equal to the number of unique items?
-            # We also ensure there is at least one non-empty column header to avoid empty rows
-            if len(cleaned_header) == len(set(cleaned_header)) and any(cleaned_header):
+            # FIX: Check for uniqueness, explicitly ignoring empty columns so trailing blanks don't cause failures
+            non_empty_headers = [h for h in cleaned_header if h]
+            if len(non_empty_headers) == len(set(non_empty_headers)) and non_empty_headers:
                 print(f"Found unique header on row {i+1}. Processing data...")
                 # Create DataFrame using this row as columns, and the rest as data
                 uploaded_df = pd.DataFrame(all_values[i+1:], columns=cleaned_header)
@@ -74,8 +74,17 @@ def process_sheets_in_batches():
         
         dest_ss = gc.open_by_key(main_sheet_id)
         ref_sheet = dest_ss.worksheet("Reference")
-        ref_df = pd.DataFrame(ref_sheet.get_all_records())
+        
+        # --- FIX: Replaced get_all_records() with get_all_values() to bypass strict duplicate header errors ---
+        ref_values = ref_sheet.get_all_values()
+        if not ref_values:
+            raise ValueError("Reference sheet is empty!")
+            
+        # Manually construct DataFrame
+        ref_headers = ref_values[0]
+        ref_df = pd.DataFrame(ref_values[1:], columns=ref_headers)
         ref_df.columns = [str(col).strip().upper() for col in ref_df.columns]
+        
         ref_df['REGIONS'] = ref_df['REGIONS'].str.upper()
         ref_df.set_index('REGIONS', inplace=True)
 
@@ -123,7 +132,7 @@ def process_sheets_in_batches():
                     print(f"Found {len(new_rows_df)} new rows to add.")
                     df_to_write = new_rows_df.reindex(columns=TARGET_HEADERS)
                     
-                    # --- NEW: Sort the data by REGIONS before appending ---
+                    # --- Sort the data by REGIONS before appending ---
                     print("Sorting data by REGIONS...")
                     df_to_write = df_to_write.sort_values(by='REGIONS')
                     
